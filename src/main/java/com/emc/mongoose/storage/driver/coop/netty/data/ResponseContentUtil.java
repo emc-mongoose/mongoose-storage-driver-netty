@@ -47,7 +47,7 @@ public abstract class ResponseContentUtil {
 				dataOp.countBytesDone(countBytesDone + chunkSize);
 			}
 		} catch (final DataVerificationException e) {
-			final DataItem dataItem = dataOp.item();
+			final var dataItem = (DataItem) dataOp.item();
 			dataOp.countBytesDone(e.getOffset());
 			dataOp.status(Operation.Status.RESP_FAIL_CORRUPT);
 			if (e instanceof DataSizeException) {
