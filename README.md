@@ -8,6 +8,10 @@
 
 # [Netty](https://netty.io/)-based Storage Driver
 
+Netty uses its own I/O worker thread pool. The count of these threads is controlled by the `storage-driver-threads`
+configuration option. However the connection pool allows to keep much more open connections at any moment of time. The
+count of the open connections may be limited by `storage-driver-limit-concurrency` configuration option.
+
 ## 1. Configuration Reference
 
 | Name                                           | Type         | Default Value    | Description                                      |
