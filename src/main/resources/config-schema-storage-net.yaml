@@ -13,7 +13,10 @@ storage:
     timeoutMilliSec: int
     ioRatio: int
     transport: string
-    ssl: boolean
+    ssl:
+      enabled: boolean
+      protocols: list
+      provider: string
     node:
       addrs: list
       connAttemptsLimit: int

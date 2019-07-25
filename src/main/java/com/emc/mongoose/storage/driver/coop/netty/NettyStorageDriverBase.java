@@ -40,16 +40,25 @@ import io.netty.channel.epoll.Epoll;
 import io.netty.channel.kqueue.KQueue;
 import io.netty.channel.pool.ChannelPoolHandler;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslProvider;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.timeout.IdleStateHandler;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.CloseableThreadContext;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.ThreadContext;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLException;
 
 /** Created by kurila on 30.09.16. */
 public abstract class NettyStorageDriverBase<I extends Item, O extends Operation<I>>
@@ -66,6 +75,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 	private final Class<SocketChannel> socketChannelCls;
 	private final NonBlockingConnPool connPool;
 	private final boolean sslFlag;
+	private final SslContext sslCtx;
 	protected final ChannelFutureListener reqSentCallback = this::sendFullRequestComplete;
 
 	@SuppressWarnings("unchecked")
@@ -80,9 +90,37 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		super(stepId, itemDataInput, storageConfig, verifyFlag, batchSize);
 
 		final var netConfig = storageConfig.configVal("net");
-		sslFlag = netConfig.boolVal("ssl");
+		final var sslConfig = netConfig.configVal("ssl");
+		sslFlag = sslConfig.boolVal("enabled");
 		if (sslFlag) {
-			Loggers.MSG.info("{}: SSL/TLS is enabled", stepId);
+			final var protocols = sslConfig.<String>listVal("protocols");
+			Loggers.MSG.info(
+				"{}: SSL/TLS protocols: {}", stepId, String.join(", ", protocols)
+			);
+			final var providerName = sslConfig.stringVal("provider");
+			final var provider = SslProvider.valueOf(providerName);
+			Loggers.MSG.info("{}: SSL/TLS provider: {}", stepId, providerName);
+			try {
+				final var ciphers = SSLContext
+					.getDefault()
+					.getServerSocketFactory()
+					.getSupportedCipherSuites();
+				sslCtx = SslContextBuilder
+					.forClient()
+					.trustManager(InsecureTrustManagerFactory.INSTANCE)
+					.sslProvider(provider)
+					.protocols(protocols.toArray(new String[]{}))
+					.ciphers(Arrays.asList(ciphers))
+					.build();
+			} catch (final NoSuchAlgorithmException e) {
+				throw new IllegalConfigurationException(
+					"Failed to get the list of the supported SSL/TLS cipher suites", e
+				);
+			} catch (final SSLException e) {
+				throw new IllegalConfigurationException("Failed to build the SSL context", e);
+			}
+		} else {
+			sslCtx = null;
 		}
 		final var sto = netConfig.intVal("timeoutMilliSec");
 		if (sto > 0) {
@@ -575,7 +613,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		final var pipeline = channel.pipeline();
 		if (sslFlag) {
 			Loggers.MSG.debug("{}: SSL/TLS is enabled for the channel", stepId);
-			pipeline.addLast(SslUtil.CLIENT_SSL_CONTEXT.newHandler(channel.alloc()));
+			pipeline.addLast(sslCtx.newHandler(channel.alloc()));
 		}
 		if (netTimeoutMilliSec > 0) {
 			pipeline.addLast(

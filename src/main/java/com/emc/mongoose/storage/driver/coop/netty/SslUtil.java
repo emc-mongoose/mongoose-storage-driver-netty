@@ -1,8 +1,8 @@
 package com.emc.mongoose.storage.driver.coop.netty;
 
-import io.netty.handler.ssl.OpenSslContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 
 import javax.net.ssl.SSLContext;
@@ -12,15 +12,13 @@ import java.util.Arrays;
 
 public interface SslUtil {
 
-	SslContext CLIENT_SSL_CONTEXT = sslContext();
-
-	static SslContext sslContext() {
+	static SslContext sslContext(final String[] protocols, final SslProvider provider) {
 		try {
 			return SslContextBuilder
 							.forClient()
 							.trustManager(InsecureTrustManagerFactory.INSTANCE)
-							.sslProvider(OpenSslContext.defaultClientProvider())
-							.protocols("TLSv1", "TLSv1.1", "TLSv1.2", "SSLv3")
+							.sslProvider(provider)
+							.protocols(protocols)
 							.ciphers(Arrays.asList(SSLContext.getDefault().getServerSocketFactory().getSupportedCipherSuites()))
 							.build();
 		} catch (final NoSuchAlgorithmException | SSLException e) {

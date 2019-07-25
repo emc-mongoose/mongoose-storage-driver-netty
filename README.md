@@ -32,7 +32,9 @@ count of the open connections may be limited by `storage-driver-limit-concurrenc
 | storage-net-timeoutMilliSec                    | Integer >= 0 | 1000000 | The socket timeout
 | storage-net-ioRatio                            | 0 < Integer < 100 | 50 | Internal [Netty's I/O ratio parameter](https://github.com/netty/netty/issues/1154#issuecomment-14870909). It's recommended to make it higher for large request/response payload (>1MB)
 | storage-net-transport                          | Enum | nio | The I/O transport to use (see the [details](http://netty.io/wiki/native-transports.html)). By default tries to use "nio" (the most compatible). For Linux try to use "epoll", for MacOS/BSD use "kqueue" (requires rebuilding).
-| storage-net-ssl                                | Flag | false | The flag to enable the load through SSL/TLS. Currently only HTTPS implementation is available. Have no effect if configured storage type is filesystem.
+| storage-net-ssl-enabled                        | Flag | false | The flag to enable the load through SSL/TLS. Currently only HTTPS implementation is available. Have no effect if configured storage type is filesystem.
+| storage-net-ssl-protocols                      | List of strings | TLSv1, TLSv1.1, TLSv1.2, SSLv3 | The list of secure protocols to use if SSL is enabled 
+| storage-net-ssl-provider                       | String | OPENSSL | The SSL provider. May be "OPENSSL" (better performance) or "JDK" (fallback)
 
 ## 2. Node Balancing
 
@@ -43,7 +45,7 @@ Mongoose will try to distribute the active connections equally among the endpoin
 
 ```bash
 java -jar mongoose-<VERSION>.jar \
-    --storage-net-ssl \
+    --storage-net-ssl-enabled \
     --storage-net-node-port=9021 \
     ...
 ```
