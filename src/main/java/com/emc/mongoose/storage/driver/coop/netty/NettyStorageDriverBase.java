@@ -94,9 +94,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		sslFlag = sslConfig.boolVal("enabled");
 		if (sslFlag) {
 			final var protocols = sslConfig.<String>listVal("protocols");
-			Loggers.MSG.info(
-				"{}: SSL/TLS protocols: {}", stepId, String.join(", ", protocols)
-			);
+			Loggers.MSG.info("{}: SSL/TLS protocols: {}", stepId, String.join(", ", protocols));
 			final var providerName = sslConfig.stringVal("provider");
 			final var provider = SslProvider.valueOf(providerName);
 			Loggers.MSG.info("{}: SSL/TLS provider: {}", stepId, providerName);
@@ -105,6 +103,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 					.getDefault()
 					.getServerSocketFactory()
 					.getSupportedCipherSuites();
+				Loggers.MSG.debug("{}: SSL/TLS cipher suites: {}", stepId, String.join(", ", ciphers));
 				sslCtx = SslContextBuilder
 					.forClient()
 					.trustManager(InsecureTrustManagerFactory.INSTANCE)
