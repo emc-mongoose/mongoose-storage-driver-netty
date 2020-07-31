@@ -95,21 +95,23 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		if (sslFlag) {
 			final var protocols = sslConfig.<String>listVal("protocols");
 			Loggers.MSG.info("{}: SSL/TLS protocols: {}", stepId, String.join(", ", protocols));
+			final var userCiphers = sslConfig.<String>listVal("ciphers");
 			final var providerName = sslConfig.stringVal("provider");
 			final var provider = SslProvider.valueOf(providerName);
 			Loggers.MSG.info("{}: SSL/TLS provider: {}", stepId, providerName);
 			try {
-				final var ciphers = SSLContext
-					.getDefault()
-					.getServerSocketFactory()
-					.getSupportedCipherSuites();
-				Loggers.MSG.debug("{}: SSL/TLS cipher suites: {}", stepId, String.join(", ", ciphers));
+				final var supportedCiphers = Arrays.asList(SSLContext
+						.getDefault()
+						.getServerSocketFactory()
+						.getSupportedCipherSuites());
+				final var ciphers = (userCiphers == null) ? supportedCiphers : userCiphers;
+				Loggers.MSG.info("{}: SSL/TLS cipher suites: {}", stepId, ciphers);
 				sslCtx = SslContextBuilder
 					.forClient()
 					.trustManager(InsecureTrustManagerFactory.INSTANCE)
 					.sslProvider(provider)
 					.protocols(protocols.toArray(new String[]{}))
-					.ciphers(Arrays.asList(ciphers))
+					.ciphers(ciphers)
 					.build();
 			} catch (final NoSuchAlgorithmException e) {
 				throw new IllegalConfigurationException(
