@@ -45,6 +45,8 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.AttributeKey;
+
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
@@ -65,6 +67,8 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 				extends CoopStorageDriverBase<I, O> implements NettyStorageDriver<I, O>, ChannelPoolHandler {
 
 	private static final String CLS_NAME = NettyStorageDriverBase.class.getSimpleName();
+
+	private static final AttributeKey<Boolean> ATTR_KEY_RELEASED = AttributeKey.valueOf("released");
 
 	private final EventLoopGroup ioExecutor;
 	protected final String storageNodeAddrs[];
@@ -317,6 +321,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		ThreadContext.put(KEY_STEP_ID, stepId);
 		ThreadContext.put(KEY_CLASS_NAME, CLS_NAME);
 
+		Channel conn = null;
 		if (!isStarted()) {
 			throw new IllegalStateException();
 		}
@@ -331,9 +336,10 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 					op.startResponse();
 					complete(null, op);
 				} else {
-					final var conn = connPool.lease();
-					if (conn == null) {
-						return false;
+					conn = connPool.lease();
+					conn.attr(ATTR_KEY_RELEASED).set(false);
+					if (!conn.isActive()) {
+						throw new ConnectException("Connection is not active");
 					}
 					conn.attr(ATTR_KEY_OPERATION).set(op);
 					op.nodeAddr(conn.attr(ATTR_KEY_NODE).get());
@@ -343,12 +349,14 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 			} catch (final ConnectException e) {
 				LogUtil.exception(Level.WARN, e, "Failed to lease the connection for the load operation");
 				op.status(Operation.Status.FAIL_IO);
-				complete(null, op);
+				complete(conn, op);
+				return false;
 			} catch (final Throwable thrown) {
 				throwUncheckedIfInterrupted(thrown);
 				LogUtil.exception(Level.WARN, thrown, "Failed to submit the load operation");
 				op.status(Operation.Status.FAIL_UNKNOWN);
-				complete(null, op);
+				complete(conn, op);
+				return false;
 			}
 			return true;
 		} else {
@@ -380,7 +388,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		ThreadContext.put(KEY_STEP_ID, stepId);
 		ThreadContext.put(KEY_CLASS_NAME, CLS_NAME);
 
-		Channel conn;
+		Channel conn = null;
 		O nextOp = null;
 		var n = 0;
 		try {
@@ -396,8 +404,9 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 					complete(null, nextOp);
 				} else {
 					conn = connPool.lease();
-					if (conn == null) {
-						return n;
+					conn.attr(ATTR_KEY_RELEASED).set(false);
+					if (!conn.isActive()) {
+						throw new ConnectException("Connection is not active");
 					}
 					conn.attr(ATTR_KEY_OPERATION).set(nextOp);
 					nextOp.nodeAddr(conn.attr(ATTR_KEY_NODE).get());
@@ -409,16 +418,16 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		} catch (final ConnectException e) {
 			LogUtil.exception(Level.WARN, e, "Failed to lease the connection for the load operation");
 			nextOp.status(Operation.Status.FAIL_IO);
-			complete(null, nextOp);
-			if (permits - n > 1) {
+			complete(conn, nextOp);
+			if (permits - n - 1 > 0) {
 				concurrencyThrottle.release(permits - n - 1);
 			}
 		} catch (final Throwable thrown) {
 			throwUncheckedIfInterrupted(thrown);
 			LogUtil.exception(Level.WARN, thrown, "Failed to submit the load operations");
 			nextOp.status(Operation.Status.FAIL_UNKNOWN);
-			complete(null, nextOp);
-			if (permits - n > 1) {
+			complete(conn, nextOp);
+			if (permits - n - 1 > 0) {
 				concurrencyThrottle.release(permits - n - 1);
 			}
 		}
@@ -586,9 +595,13 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		} catch (final IllegalStateException e) {
 			LogUtil.exception(Level.DEBUG, e, "{}: invalid load operation state", op.toString());
 		}
-		concurrencyThrottle.release();
-		if (channel != null) {
-			connPool.release(channel);
+		if (!channel.attr(ATTR_KEY_RELEASED).get()) {
+			concurrencyThrottle.release();
+			if (channel != null) {
+				connPool.release(channel);
+			}
+
+			channel.attr(ATTR_KEY_RELEASED).set(true);
 		}
 		handleCompleted(op);
 	}
