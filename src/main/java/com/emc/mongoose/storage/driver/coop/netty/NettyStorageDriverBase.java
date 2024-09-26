@@ -600,7 +600,6 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 			if (channel != null) {
 				connPool.release(channel);
 			}
-
 			channel.attr(ATTR_KEY_RELEASED).set(true);
 		}
 		handleCompleted(op);
