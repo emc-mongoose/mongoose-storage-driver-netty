@@ -419,7 +419,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 			LogUtil.exception(Level.WARN, e, "Failed to lease the connection for the load operation");
 			nextOp.status(Operation.Status.FAIL_IO);
 			complete(conn, nextOp);
-			if (permits - n - 1 > 0) {
+			if (permits - n > 1) {
 				concurrencyThrottle.release(permits - n - 1);
 			}
 		} catch (final Throwable thrown) {
@@ -427,7 +427,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 			LogUtil.exception(Level.WARN, thrown, "Failed to submit the load operations");
 			nextOp.status(Operation.Status.FAIL_UNKNOWN);
 			complete(conn, nextOp);
-			if (permits - n - 1 > 0) {
+			if (permits - n > 1) {
 				concurrencyThrottle.release(permits - n - 1);
 			}
 		}
@@ -594,6 +594,9 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 			op.finishResponse();
 		} catch (final IllegalStateException e) {
 			LogUtil.exception(Level.DEBUG, e, "{}: invalid load operation state", op.toString());
+		}
+		if (op.status() != Operation.Status.SUCC) {
+			channel.close();
 		}
 		if (!channel.attr(ATTR_KEY_RELEASED).get()) {
 			concurrencyThrottle.release();
