@@ -3,7 +3,6 @@ package com.emc.mongoose.storage.driver.coop.netty;
 import com.emc.mongoose.base.item.op.Operation;
 import com.emc.mongoose.base.item.Item;
 import com.emc.mongoose.base.logging.LogUtil;
-
 import static com.emc.mongoose.base.Constants.KEY_CLASS_NAME;
 import static com.emc.mongoose.base.Exceptions.throwUncheckedIfInterrupted;
 import static com.emc.mongoose.base.item.op.Operation.Status.INTERRUPTED;
