@@ -68,8 +68,6 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 
 	private static final String CLS_NAME = NettyStorageDriverBase.class.getSimpleName();
 
-	private static final AttributeKey<Boolean> ATTR_KEY_RELEASED = AttributeKey.valueOf("released");
-
 	private final EventLoopGroup ioExecutor;
 	protected final String storageNodeAddrs[];
 	protected final Bootstrap bootstrap;
@@ -404,7 +402,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 					complete(null, nextOp);
 				} else {
 					conn = connPool.lease();
-					conn.attr(ATTR_KEY_RELEASED).set(false);
+					conn.attr(ATTR_KEY_RELEASED).set(Boolean.FALSE);
 					if (!conn.isActive()) {
 						throw new ConnectException("Connection is not active");
 					}
@@ -598,12 +596,9 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		if (op.status() != Operation.Status.SUCC) {
 			channel.close();
 		}
-		if (!channel.attr(ATTR_KEY_RELEASED).get()) {
+		if (!channel.attr(ATTR_KEY_RELEASED).getAndSet(Boolean.TRUE)) {
 			concurrencyThrottle.release();
-			if (channel != null) {
-				connPool.release(channel);
-			}
-			channel.attr(ATTR_KEY_RELEASED).set(true);
+			connPool.release(channel);
 		}
 		handleCompleted(op);
 	}

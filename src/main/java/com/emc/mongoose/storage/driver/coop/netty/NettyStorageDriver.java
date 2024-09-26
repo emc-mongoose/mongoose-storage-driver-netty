@@ -38,5 +38,7 @@ public interface NettyStorageDriver<I extends Item, O extends Operation<I>>
 
 	AttributeKey<Operation> ATTR_KEY_OPERATION = AttributeKey.valueOf("op");
 
+	AttributeKey<Boolean> ATTR_KEY_RELEASED = AttributeKey.valueOf("released");
+
 	void complete(final Channel channel, final O op);
 }
