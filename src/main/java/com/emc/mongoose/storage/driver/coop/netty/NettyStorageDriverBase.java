@@ -335,7 +335,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 					complete(null, op);
 				} else {
 					conn = connPool.lease();
-					conn.attr(ATTR_KEY_RELEASED).set(false);
+					conn.attr(ATTR_KEY_RELEASED).set(Boolean.FALSE);
 					if (!conn.isActive()) {
 						throw new ConnectException("Connection is not active");
 					}
