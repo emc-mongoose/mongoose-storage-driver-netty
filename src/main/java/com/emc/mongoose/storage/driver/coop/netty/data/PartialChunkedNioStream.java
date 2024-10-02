@@ -84,9 +84,9 @@ public class PartialChunkedNioStream implements ChunkedInput<ByteBuf> {
         ByteBuf buffer = allocator.buffer(writeBytes);
 
         // Re-position the byte buffer for the partial chunk write
-		if (writeBytes < chunkSize) {
-			byteBuffer.position(chunkSize - writeBytes);
-		}
+        if (writeBytes < chunkSize) {
+            byteBuffer.position(chunkSize - writeBytes);
+        }
 
         // Write the chunk
         try {
