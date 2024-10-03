@@ -39,8 +39,7 @@ public class PartialChunkedNioStream implements ChunkedInput<ByteBuf> {
 
     @Override
     public final boolean isEndOfInput() {
-        // Offset may exceed size when size is not a multiple of chunk size
-        return offset >= sizeToTransfer;
+        return offset == sizeToTransfer;
     }
 
     @Override
@@ -60,13 +59,20 @@ public class PartialChunkedNioStream implements ChunkedInput<ByteBuf> {
             return null;
         }
 
-        // Allow for partial chunk write
-        int writeBytes = (int) Math.min(chunkSize, sizeToTransfer - offset);
+        int nextChunkSize = chunkSize;
+        int bytesRemaining = (int) (length() - progress());
+
+        // Is there less than a chunk size of data remaining?
+        if (bytesRemaining < chunkSize) {
+            // Limit the byte buffer and next chunk size
+            byteBuffer.limit(bytesRemaining);
+            nextChunkSize = bytesRemaining;
+        }
 
         // Should be empty
         int readBytes = byteBuffer.position();
 
-        // Read a whole chunk
+        // Read the chunk
         while (true) {
             int localReadBytes = in.read(byteBuffer);
             if (localReadBytes < 0) {
@@ -74,19 +80,14 @@ public class PartialChunkedNioStream implements ChunkedInput<ByteBuf> {
             }
             readBytes += localReadBytes;
             offset += localReadBytes;
-            if (readBytes == chunkSize) {
+            if (readBytes == nextChunkSize) {
                 break;
             }
         }
 
         byteBuffer.flip();
         boolean release = true;
-        ByteBuf buffer = allocator.buffer(writeBytes);
-
-        // Re-position the byte buffer for the partial chunk write
-        if (writeBytes < chunkSize) {
-            byteBuffer.position(chunkSize - writeBytes);
-        }
+        ByteBuf buffer = allocator.buffer(byteBuffer.remaining());
 
         // Write the chunk
         try {
