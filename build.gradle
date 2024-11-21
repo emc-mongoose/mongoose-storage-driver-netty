@@ -25,7 +25,7 @@ repositories {
 
 description = "Mongoose is a high-load storage performance testing tool"
 group = "com.github.emc-mongoose"
-version = "4.2.20"
+version = "4.2.21"
 sourceCompatibility = 11
 targetCompatibility = 11
 
@@ -40,9 +40,10 @@ ext {
 		log4j              : "2.19.0",
 		mongooseBase       : "4.3.3",
 		mongooseStorageDriverCoop: "4.2.21",
-		netty              : "4.1.25.Final",
+		netty              : "4.1.115.Final",
 		nettyConnectionPool: "1.2.1",
-		nettyTcNative      : "2.0.12.Final",
+		nettyTcNative      : "2.0.69.Final",
+		nettyIoUring       : "0.0.25.Final",
 		scala              : "2.12.6",
 		slf4j              : "1.7.25",
 	]
@@ -94,7 +95,8 @@ dependencies {
 		"io.netty:netty-transport-native-epoll:${depVersion.netty}:linux-x86_64",
 		"io.netty:netty-transport-native-kqueue:${depVersion.netty}:osx-x86_64",
 		"io.netty:netty-transport-native-unix-common:${depVersion.netty}",
-		"io.netty:netty-tcnative-boringssl-static:${depVersion.nettyTcNative}",
+		"io.netty:netty-tcnative-boringssl-static:${depVersion.nettyTcNative}:linux-x86_64",
+		"io.netty.incubator:netty-incubator-transport-native-io_uring:${depVersion.nettyIoUring}:linux-x86_64",
 		"org.javassist:javassist:${depVersion.javassist}",
 	)
 

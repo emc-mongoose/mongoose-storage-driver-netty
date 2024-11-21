@@ -29,6 +29,7 @@ import com.github.akurilov.confuse.Config;
 import com.github.akurilov.netty.connection.pool.MultiNodeConnPoolImpl;
 import com.github.akurilov.netty.connection.pool.NonBlockingConnPool;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -45,13 +46,10 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.timeout.IdleStateHandler;
-import io.netty.util.AttributeKey;
 
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -59,7 +57,6 @@ import org.apache.logging.log4j.CloseableThreadContext;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.ThreadContext;
 
-import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
 
 /** Created by kurila on 30.09.16. */
@@ -102,23 +99,14 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 			final var provider = SslProvider.valueOf(providerName);
 			Loggers.MSG.info("{}: SSL/TLS provider: {}", stepId, providerName);
 			try {
-				final var supportedCiphers = Arrays.asList(SSLContext
-						.getDefault()
-						.getServerSocketFactory()
-						.getSupportedCipherSuites());
-				final var ciphers = (userCiphers == null) ? supportedCiphers : userCiphers;
-				Loggers.MSG.info("{}: SSL/TLS cipher suites: {}", stepId, ciphers);
 				sslCtx = SslContextBuilder
 					.forClient()
 					.trustManager(InsecureTrustManagerFactory.INSTANCE)
 					.sslProvider(provider)
 					.protocols(protocols.toArray(new String[]{}))
-					.ciphers(ciphers)
+					.ciphers(userCiphers)
 					.build();
-			} catch (final NoSuchAlgorithmException e) {
-				throw new IllegalConfigurationException(
-					"Failed to get the list of the supported SSL/TLS cipher suites", e
-				);
+				Loggers.MSG.info("{}: SSL/TLS cipher suites: {}", stepId, sslCtx.cipherSuites());
 			} catch (final SSLException e) {
 				throw new IllegalConfigurationException("Failed to build the SSL context", e);
 			}
@@ -163,6 +151,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		} else {
 			transportKey = Transport.valueOf(transportConfig.toUpperCase());
 		}
+		Loggers.MSG.info("{}: netty transport: {}", toString(), transportKey);
 
 		try {
 
@@ -193,13 +182,13 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		}
 
 		bootstrap = new Bootstrap().group(ioExecutor).channel(socketChannelCls);
-		// bootstrap.option(ChannelOption.ALLOCATOR, ByteBufAllocator)
+		bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 		// bootstrap.option(ChannelOption.ALLOW_HALF_CLOSURE)
 		// bootstrap.option(ChannelOption.RCVBUF_ALLOCATOR, )
 		// bootstrap.option(ChannelOption.MESSAGE_SIZE_ESTIMATOR)
 		// bootstrap.option(ChannelOption.AUTO_READ)
 		bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, netConfig.intVal("timeoutMilliSec"));
-		bootstrap.option(ChannelOption.WRITE_SPIN_COUNT, 1);
+		bootstrap.option(ChannelOption.WRITE_SPIN_COUNT, 32);
 		int size = netConfig.intVal("rcvBuf");
 		if (size > 0) {
 			bootstrap.option(ChannelOption.SO_RCVBUF, size);

@@ -12,16 +12,14 @@ storage:
     sndBuf: 0
     tcpNoDelay: true
     timeoutMilliSec: 0
-    ioRatio: 50
+    ioRatio: 80
     transport: epoll
     ssl:
       ciphers: null
       enabled: false
       protocols:
-        - TLSv1
-        - TLSv1.1
         - TLSv1.2
-        - SSLv3
+        - TLSv1.1
       provider: OPENSSL
     node:
       addrs:
