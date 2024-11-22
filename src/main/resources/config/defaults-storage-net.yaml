@@ -27,3 +27,4 @@ storage:
       connAttemptsLimit: 0
       port: 7
       slice: false
+    writeSpinCount: 1

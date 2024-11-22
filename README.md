@@ -36,6 +36,7 @@ count of the open connections may be limited by `storage-driver-limit-concurrenc
 | storage-net-ssl-enabled                        | Flag | false | The flag to enable the load through SSL/TLS. Currently only HTTPS implementation is available. Have no effect if configured storage type is filesystem.
 | storage-net-ssl-protocols                      | List of strings | TLSv1.1, TLSv1.2 | The list of secure protocols to use if SSL is enabled 
 | storage-net-ssl-provider                       | String | OPENSSL | The SSL provider. May be "OPENSSL" (better performance) or "JDK" (fallback)
+| storage-net-writeSpinCount                     | Integer | 1 | Maximum loop count for a write operation until WritableByteChannel.write(ByteBuffer) returns a non-zero value.
 
 ## 2. Node Balancing
 
