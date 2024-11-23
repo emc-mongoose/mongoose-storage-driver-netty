@@ -18,10 +18,8 @@ storage:
       ciphers: null
       enabled: false
       protocols:
-        - TLSv1
-        - TLSv1.1
         - TLSv1.2
-        - SSLv3
+        - TLSv1.1
       provider: OPENSSL
     node:
       addrs:
@@ -29,3 +27,4 @@ storage:
       connAttemptsLimit: 0
       port: 7
       slice: false
+    writeSpinCount: 1
