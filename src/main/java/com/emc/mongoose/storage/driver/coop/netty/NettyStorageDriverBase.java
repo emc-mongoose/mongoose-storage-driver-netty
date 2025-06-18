@@ -74,6 +74,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 	private final Class<SocketChannel> socketChannelCls;
 	private final NonBlockingConnPool connPool;
 	private final boolean sslFlag;
+	private final int responseDuration;
 	private final SslContext sslCtx;
 	protected final ChannelFutureListener reqSentCallback = this::sendFullRequestComplete;
 
@@ -205,6 +206,7 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		try (final var logCtx = CloseableThreadContext.put(KEY_STEP_ID, this.stepId).put(KEY_CLASS_NAME, CLS_NAME)) {
 			connPool = createConnectionPool();
 		}
+		responseDuration = netConfig.intVal("response-duration");
 	}
 
 	protected NonBlockingConnPool createConnectionPool() {
@@ -578,6 +580,13 @@ public abstract class NettyStorageDriverBase<I extends Item, O extends Operation
 		ThreadContext.put(KEY_STEP_ID, stepId);
 
 		try {
+			if (responseDuration > 0) {
+				try {
+					long elapsed = (op.START_OFFSET_MICROS + System.nanoTime() / 1000) - op.reqTimeStart();
+					long sleepMs = responseDuration - (elapsed / 1000);
+					if (sleepMs > 0) { Thread.sleep(sleepMs); }
+				} catch (Exception e) {}
+			}
 			op.finishResponse();
 		} catch (final IllegalStateException e) {
 			LogUtil.exception(Level.DEBUG, e, "{}: invalid load operation state", op.toString());

@@ -28,3 +28,5 @@ storage:
       port: 7
       slice: false
     writeSpinCount: 1
+    response:
+      duration: -1

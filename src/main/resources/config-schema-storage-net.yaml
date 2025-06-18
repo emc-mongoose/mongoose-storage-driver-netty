@@ -24,3 +24,5 @@ storage:
       port: int
       slice: boolean
     writeSpinCount: int
+    response:
+      duration: int
